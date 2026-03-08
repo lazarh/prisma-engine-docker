@@ -42,6 +42,9 @@ RUN apt-get update && apt-get install -y \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+# Install ARMv7 target for cross-compilation
+RUN rustup target add armv7-unknown-linux-gnueabihf
+
 # Set default version
 ARG PRISMA_VERSION=6.7.0
 
