@@ -26,12 +26,14 @@ FROM ubuntu:22.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN dpkg --add-architecture armhf && \
+    apt-get update && apt-get install -y \
     build-essential \
     gcc-arm-linux-gnueabihf \
     g++-arm-linux-gnueabihf \
     libc6-dev-armhf-cross \
     libc6-armhf-cross \
+    libssl-dev:armhf \
     libssl-dev \
     pkg-config \
     wget \
@@ -45,62 +47,22 @@ RUN apt-get update && apt-get install -y \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Set default versions
+# Set default version
 ARG PRISMA_VERSION=6.7.0
-ARG OPENSSL_VERSION=3.0.16
 
 ENV PRISMA_VERSION=${PRISMA_VERSION}
-ENV OPENSSL_VERSION=${OPENSSL_VERSION}
 
 # ==============================================================================
-# Stage 2: Build OpenSSL 3.0.x for ARMv7
+# Stage 2: Stub stage to prevent cache issues (OpenSSL build skipped for simplicity)
 # ==============================================================================
 FROM builder AS openssl-builder
 
-WORKDIR /tmp
-
-# Download and extract OpenSSL
-RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz && \
-    tar xzf openssl-${OPENSSL_VERSION}.tar.gz && \
-    rm openssl-${OPENSSL_VERSION}.tar.gz
-
-WORKDIR /tmp/openssl-${OPENSSL_VERSION}
-
-# Configure OpenSSL for ARMv7 with hard-float ABI
-# Using linux-armv4 target which is compatible with ARMv7
-# Disable problematic NIST curves that cause build issues on ARM
-RUN ./Configure --prefix=/opt/openssl-armv7 \
-    --openssldir=/opt/openssl-armv7 \
-    linux-armv4 \
-    -mfpu=vfpv4 \
-    -mfloat-abi=hard \
-    -Wno-error \
-    no-shared \
-    no-async \
-    no-ec_nistp_64_gcc_128
-
-# Cross-compile OpenSSL for ARMv7
-# Use single-threaded build to avoid race conditions, add -Wno-error
-RUN make -j2 \
-    CC=arm-linux-gnueabihf-gcc \
-    AR="arm-linux-gnueabihf-ar" \
-    RANLIB="arm-linux-gnueabihf-ranlib" \
-    ARCH=arm \
-    CFLAGS="-O2 -Wno-error"
-
-RUN make install \
-    CC=arm-linux-gnueabihf-gcc \
-    AR="arm-linux-gnueabihf-ar" \
-    RANLIB="arm-linux-gnueabihf-ranlib" \
-    DESTDIR=/tmp/openssl-install
+RUN echo "Skipping custom OpenSSL build - using system libraries"
 
 # ==============================================================================
 # Stage 3: Build Prisma Engines for ARMv7
 # ==============================================================================
 FROM builder AS prisma-builder
-
-# Copy pre-built OpenSSL from previous stage
-COPY --from=openssl-builder /tmp/openssl-install/usr/local /opt/openssl-armv7
 
 WORKDIR /tmp/prisma-engines
 
@@ -108,10 +70,6 @@ WORKDIR /tmp/prisma-engines
 RUN git clone --depth=1 --branch ${PRISMA_VERSION} https://github.com/prisma/prisma-engines.git /tmp/prisma-engines
 
 # Set cross-compilation environment
-ENV OPENSSL_DIR=/opt/openssl-armv7
-ENV OPENSSL_LIB_DIR=/opt/openssl-armv7/lib
-ENV OPENSSL_INCLUDE_DIR=/opt/openssl-armv7/include
-ENV OPENSSL_STATIC=1
 ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 ENV CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
 ENV CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
@@ -177,7 +135,6 @@ RUN mkdir -p /output/armv7
 # Create a marker file with build info
 RUN echo "Prisma ARMv7 Engine Build" > /output/armv7/BUILD_INFO && \
     echo "Version: ${PRISMA_VERSION}" >> /output/armv7/BUILD_INFO && \
-    echo "OpenSSL: ${OPENSSL_VERSION}" >> /output/armv7/BUILD_INFO && \
     echo "Target: armv7-unknown-linux-gnueabihf" >> /output/armv7/BUILD_INFO
 
 # Copy built binaries from prisma-builder (when built natively on ARM or with emulation)
@@ -200,8 +157,7 @@ RUN cd /output && tar -czvf prisma-armv7-engines.tar.gz armv7/
 # ==============================================================================
 FROM builder AS final
 
-# Copy all stages
-COPY --from=openssl-builder /tmp/openssl-install /tmp/openssl-install
+# Copy prisma-builder stage
 COPY --from=prisma-builder /tmp/prisma-engines /tmp/prisma-engines
 
 WORKDIR /output
