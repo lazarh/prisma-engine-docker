@@ -25,16 +25,11 @@ FROM ubuntu:22.04 AS builder
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
-RUN dpkg --add-architecture armhf && \
-    apt-get update && apt-get install -y \
+# Install build dependencies (cross-compiler toolchain only, no ARM packages needed)
+RUN apt-get update && apt-get install -y \
     build-essential \
     gcc-arm-linux-gnueabihf \
     g++-arm-linux-gnueabihf \
-    libc6-dev-armhf-cross \
-    libc6-armhf-cross \
-    libssl-dev:armhf \
-    libssl-dev \
     pkg-config \
     wget \
     curl \
