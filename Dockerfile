@@ -47,7 +47,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Set default versions
 ARG PRISMA_VERSION=6.7.0
-ARG OPENSSL_VERSION=3.0.15
+ARG OPENSSL_VERSION=3.0.16
 
 ENV PRISMA_VERSION=${PRISMA_VERSION}
 ENV OPENSSL_VERSION=${OPENSSL_VERSION}
@@ -68,7 +68,7 @@ WORKDIR /tmp/openssl-${OPENSSL_VERSION}
 
 # Configure OpenSSL for ARMv7 with hard-float ABI
 # Using linux-armv4 target which is compatible with ARMv7
-# Add -Wno-error to prevent warnings from being treated as errors
+# Disable problematic NIST curves that cause build issues on ARM
 RUN ./Configure --prefix=/opt/openssl-armv7 \
     --openssldir=/opt/openssl-armv7 \
     linux-armv4 \
@@ -77,16 +77,16 @@ RUN ./Configure --prefix=/opt/openssl-armv7 \
     -Wno-error \
     no-shared \
     no-async \
-    enable-ec_nistp_64_gcc_128
+    no-ec_nistp_64_gcc_128
 
 # Cross-compile OpenSSL for ARMv7
-# Add -Wno-error to prevent compiler warnings from failing the build
-RUN make -j$(nproc) \
+# Use single-threaded build to avoid race conditions, add -Wno-error
+RUN make -j2 \
     CC=arm-linux-gnueabihf-gcc \
     AR="arm-linux-gnueabihf-ar" \
     RANLIB="arm-linux-gnueabihf-ranlib" \
     ARCH=arm \
-    CFLAGS="-Wno-error"
+    CFLAGS="-O2 -Wno-error"
 
 RUN make install \
     CC=arm-linux-gnueabihf-gcc \
