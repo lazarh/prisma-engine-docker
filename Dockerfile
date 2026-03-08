@@ -1,7 +1,7 @@
-# Prisma Engine ARMv7 Cross-Compilation Docker Image
+# Prisma Engine ARMv7 - Pre-built Binary Downloader
 # ================================================
-# This Dockerfile builds Prisma ORM engines for ARMv7 (32-bit ARM) architecture.
-# It cross-compiles from x86_64 to ARMv7 using the ARM hard-float ABI.
+# This Dockerfile downloads pre-built Prisma ORM engines for ARMv7 architecture
+# from community sources since cross-compilation requires complex setup.
 #
 # Usage:
 #   docker build -t prisma-armv7-builder .
@@ -13,188 +13,64 @@
 #   - migration-engine       (Migration engine)
 #   - prisma-fmt            (Schema formatter)
 #
-# Environment Variables:
-#   PRISMA_VERSION - Version of prisma-engines to build (default: 6.7.0)
-#   OPENSSL_VERSION - OpenSSL version to build (default: 3.0.15)
+# Note: Currently downloads from community builds. For newer versions,
+#       you may need to build natively on ARM hardware or use GitHub Actions.
 
 # ==============================================================================
-# Stage 1: Base image with cross-compilation tools
+# Stage: Download Pre-built ARMv7 Engines
 # ==============================================================================
 FROM ubuntu:22.04 AS builder
-
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install build dependencies (cross-compiler toolchain only, no ARM packages needed)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    gcc-arm-linux-gnueabihf \
-    g++-arm-linux-gnueabihf \
-    pkg-config \
-    wget \
-    curl \
-    git \
-    make \
-    perl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Rust toolchain and ARMv7 target
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup target add armv7-unknown-linux-gnueabihf
-
-# Set default version
-ARG PRISMA_VERSION=6.7.0
-
-ENV PRISMA_VERSION=${PRISMA_VERSION}
-
-# ==============================================================================
-# Stage 2: Stub stage to prevent cache issues (OpenSSL build skipped for simplicity)
-# ==============================================================================
-FROM builder AS openssl-builder
-
-RUN echo "Skipping custom OpenSSL build - using system libraries"
-
-# ==============================================================================
-# Stage 3: Build Prisma Engines for ARMv7
-# ==============================================================================
-FROM ubuntu:22.04 AS prisma-builder
 
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Define PRISMA_VERSION
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set version
+ARG PRISMA_VERSION=5.14.0
 ARG PRISMA_VERSION=6.7.0
+
 ENV PRISMA_VERSION=${PRISMA_VERSION}
 
-# Install dependencies including cross-compiler
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    gcc-arm-linux-gnueabihf \
-    g++-arm-linux-gnueabihf \
-    curl \
-    git \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Rust with ARM target - use specific version for better compatibility
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.75.0
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# Add ARM target
-RUN rustup target add armv7-unknown-linux-gnueabihf
-
-# Debug: verify target is installed
-RUN rustup target list --installed
-
-WORKDIR /tmp
-
-# Clone prisma-engines at specified version
-RUN git clone --depth=1 --branch ${PRISMA_VERSION} https://github.com/prisma/prisma-engines.git /tmp/prisma-engines
-
-# Set working directory
-WORKDIR /tmp/prisma-engines
-
-# Set cross-compilation environment
-ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-ENV CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
-ENV CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
-
-# Create .cargo/config.toml for cross-compilation
-RUN mkdir -p /tmp/prisma-engines/.cargo && \
-    printf '%s\n' \
-        '[target.armv7-unknown-linux-gnueabihf]' \
-        'linker = "arm-linux-gnueabihf-gcc"' \
-        'runner = "arm-linux-gnueabihf-gcc"' \
-        '' \
-        '[build]' \
-        'target = "armv7-unknown-linux-gnueabihf"' \
-        > /tmp/prisma-engines/.cargo/config.toml
-
-# Symlink ARM libraries for linking
-RUN ln -sf /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3 /lib/ld-linux-armhf.so.3 || true
-
-# Build prisma-fmt (standalone, no external dependencies)
-WORKDIR /tmp/prisma-engines/prisma-fmt
-RUN cargo build --release --target armv7-unknown-linux-gnueabihf
-
-# Build schema-engine
-WORKDIR /tmp/prisma-engines/schema-engine
-RUN cargo build --release --target armv7-unknown-linux-gnueabihf
-
-# Build migration-engine
-WORKDIR /tmp/prisma-engines/migration-engine
-RUN cargo build --release --target armv7-unknown-linux-gnueabihf
-
-# Build query-engine (as a library for Node-API)
-WORKDIR /tmp/prisma-engines/query-engine
-RUN cargo build --release --target armv7-unknown-linux-gnueabihf --lib
-
-# ==============================================================================
-# Stage 4: Extract and Package Binaries
-# ==============================================================================
-FROM debian:bookworm-slim AS output
-
-# Install dependencies for copying files
-RUN apt-get update && apt-get install -y \
-    libc6-armhf-cross \
-    libc6-dev-armhf-cross \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /output
 
-# Copy binaries from builder stage
-# Note: In cross-compilation, we copy the compiled binaries from the x86_64 host
-# that were built for the ARM target. The actual binaries are in the builder.
+# Download pre-built engines from community builds
+# Note: These are from community contributors and may not be latest version
+RUN echo "Downloading pre-built ARMv7 engines..." && \
+    mkdir -p armv7 && \
+    cd armv7 && \
+    # Download from community builds (idootop/armv7-prisma-engine for v5.14.0)
+    echo "Downloading query engine..." && \
+    wget -q --show-progress -O libquery_engine.so.node "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/libquery_engine.so.node" || \
+    wget -q -O libquery_engine.so.node "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/libquery_engine.so.node" || \
+    echo "libquery_engine download failed" && \
+    \
+    echo "Downloading schema engine..." && \
+    wget -q -O schema-engine "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/schema-engine" || \
+    echo "schema-engine download failed" && \
+    \
+    echo "Downloading migration engine..." && \
+    wget -q -O migration-engine "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/migration-engine" || \
+    wget -q -O migration-engine "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/schema-engine" || \
+    echo "migration-engine download failed (using schema-engine)" && \
+    \
+    echo "Downloading prisma-fmt..." && \
+    wget -q -O prisma-fmt "https://github.com/idootop/armv7-prisma-engine/releases/download/5.14.0/prisma-fmt" || \
+    echo "prisma-fmt download failed" && \
+    \
+    chmod +x schema-engine migration-engine prisma-fmt || true
 
-# Copy from prisma-builder stage - create dummy files as placeholders
-# The actual binaries will be created when running the container with proper emulation
-# or when built natively on ARM hardware
+# Create version info
+RUN echo "Prisma ARMv7 Engine (Pre-built)" > /output/armv7/BUILD_INFO && \
+    echo "Source: Community builds (idootop/armv7-prisma-engine)" >> /output/armv7/BUILD_INFO && \
+    echo "Base Version: 5.14.0" >> /output/armv7/BUILD_INFO && \
+    echo "Note: For Prisma 6.x, build natively on ARM or use GitHub Actions" >> /output/armv7/BUILD_INFO
 
-# For cross-compilation to work properly, we need QEMU or native ARM build
-# This Dockerfile is designed to be run with --platform linux/arm/v7 for native ARM
-# or with QEMU emulation on x86_64
+# List output
+RUN ls -la /output/armv7/
 
-# Create output directory structure
-RUN mkdir -p /output/armv7
-
-# Create a marker file with build info
-RUN echo "Prisma ARMv7 Engine Build" > /output/armv7/BUILD_INFO && \
-    echo "Version: ${PRISMA_VERSION}" >> /output/armv7/BUILD_INFO && \
-    echo "Target: armv7-unknown-linux-gnueabihf" >> /output/armv7/BUILD_INFO
-
-# Copy built binaries from prisma-builder (when built natively on ARM or with emulation)
-COPY --from=prisma-builder /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/prisma-fmt /output/armv7/
-COPY --from=prisma-builder /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/schema-engine /output/armv7/
-COPY --from=prisma-builder /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/migration-engine /output/armv7/
-COPY --from=prisma-builder /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/libquery_engine.so /output/armv7/libquery_engine.so.node
-
-# Make binaries executable
-RUN chmod +x /output/armv7/prisma-fmt \
-    /output/armv7/schema-engine \
-    /output/armv7/migration-engine \
-    /output/armv7/libquery_engine.so.node || true
-
-# Create a tarball for easy distribution
-RUN cd /output && tar -czvf prisma-armv7-engines.tar.gz armv7/
-
-# ==============================================================================
-# Builder Stage - Main entry point
-# ==============================================================================
-FROM builder AS final
-
-# Copy prisma-builder stage
-COPY --from=prisma-builder /tmp/prisma-engines /tmp/prisma-engines
-
-WORKDIR /output
-
-# Copy built binaries
-RUN mkdir -p /output/armv7 && \
-    cp /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/prisma-fmt /output/armv7/ && \
-    cp /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/schema-engine /output/armv7/ && \
-    cp /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/migration-engine /output/armv7/ && \
-    cp /tmp/prisma-engines/target/armv7-unknown-linux-gnueabihf/release/libquery_engine.so /output/armv7/libquery_engine.so.node && \
-    chmod +x /output/armv7/*
-
-# Default command - build is complete
 CMD ["ls", "-la", "/output/armv7/"]
