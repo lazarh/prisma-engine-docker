@@ -1,4 +1,4 @@
-# Prisma Engine Docker - ARMv7 Cross-Compilation
+# Prisma Engine Docker - ARMv7 Binary Provider
 
 <div align="center">
 
@@ -7,7 +7,13 @@
 
 </div>
 
-This project provides Docker build environments for cross-compiling [Prisma ORM](https://www.prisma.io/) engines for **ARMv7** (32-bit ARM) architecture, enabling deployment on devices like Raspberry Pi 3 and other ARMv7-based systems.
+This project provides Docker images for obtaining **ARMv7** (32-bit ARM) binaries for [Prisma ORM](https://www.prisma.io/), enabling deployment on devices like Raspberry Pi 3 and other ARMv7-based systems.
+
+## Current Status
+
+**Note:** Due to the complexity of cross-compiling Rust for ARMv7 (QEMU emulation issues), this project currently downloads pre-built binaries from community sources:
+- **Available Version:** Prisma 5.14.0 (via [idootop/armv7-prisma-engine](https://github.com/idootop/armv7-prisma-engine))
+- **For Prisma 6.x:** You need to build natively on ARM hardware or use GitHub Actions with ARM runners
 
 ## Why This Project?
 
@@ -15,7 +21,7 @@ Prisma officially supports only:
 - **x86_64** (amd64)
 - **ARM64** (aarch64)
 
-However, many embedded devices and older single-board computers use **ARMv7** (armhf) architecture. This project bridges that gap by providing Docker-based build environments for cross-compiling Prisma engines to ARMv7.
+However, many embedded devices and older single-board computers use **ARMv7** (armhf) architecture.
 
 ## Table of Contents
 
