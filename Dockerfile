@@ -68,21 +68,25 @@ WORKDIR /tmp/openssl-${OPENSSL_VERSION}
 
 # Configure OpenSSL for ARMv7 with hard-float ABI
 # Using linux-armv4 target which is compatible with ARMv7
+# Add -Wno-error to prevent warnings from being treated as errors
 RUN ./Configure --prefix=/opt/openssl-armv7 \
     --openssldir=/opt/openssl-armv7 \
     linux-armv4 \
     -mfpu=vfpv4 \
     -mfloat-abi=hard \
+    -Wno-error \
     no-shared \
     no-async \
     enable-ec_nistp_64_gcc_128
 
 # Cross-compile OpenSSL for ARMv7
+# Add -Wno-error to prevent compiler warnings from failing the build
 RUN make -j$(nproc) \
     CC=arm-linux-gnueabihf-gcc \
     AR="arm-linux-gnueabihf-ar" \
     RANLIB="arm-linux-gnueabihf-ranlib" \
-    ARCH=arm
+    ARCH=arm \
+    CFLAGS="-Wno-error"
 
 RUN make install \
     CC=arm-linux-gnueabihf-gcc \
