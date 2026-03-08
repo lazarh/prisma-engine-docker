@@ -1,0 +1,34 @@
+# Build outputs
+output/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# Docker
+*.tar.gz
+*.tgz
+
+# Environment
+.env
+.env.local
+
+# Documentation
+README.html

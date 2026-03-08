@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Build outputs
+output/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile.local
+docker-compose.override.yml
+
+# CI/CD
+.github/workflows/docker-publish.yml
