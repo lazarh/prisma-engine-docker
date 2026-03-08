@@ -78,10 +78,12 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup target add armv7-unknown-linux-gnueabihf
 
-WORKDIR /tmp/prisma-engines
+WORKDIR /tmp
+RUN mkdir -p prisma-engines
 
 # Clone prisma-engines at specified version
-RUN git clone --depth=1 --branch ${PRISMA_VERSION} https://github.com/prisma/prisma-engines.git /tmp/prisma-engines
+WORKDIR /tmp/prisma-engines
+RUN git clone --depth=1 --branch ${PRISMA_VERSION} https://github.com/prisma/prisma-engines.git .
 
 # Set cross-compilation environment
 ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
