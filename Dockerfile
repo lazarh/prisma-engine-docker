@@ -114,14 +114,14 @@ ENV CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
 
 # Create .cargo/config.toml for cross-compilation
 RUN mkdir -p /tmp/prisma-engines/.cargo && \
-    cat > /tmp/prisma-engines/.cargo/config.toml << 'EOF'
-[target.armv7-unknown-linux-gnueabihf]
-linker = "arm-linux-gnueabihf-gcc"
-runner = "arm-linux-gnueabihf-gcc"
-
-[build]
-target = "armv7-unknown-linux-gnueabihf"
-EOF
+    printf '%s\n' \
+        '[target.armv7-unknown-linux-gnueabihf]' \
+        'linker = "arm-linux-gnueabihf-gcc"' \
+        'runner = "arm-linux-gnueabihf-gcc"' \
+        '' \
+        '[build]' \
+        'target = "armv7-unknown-linux-gnueabihf"' \
+        > /tmp/prisma-engines/.cargo/config.toml
 
 # Symlink ARM libraries for linking
 RUN ln -sf /usr/arm-linux-gnueabihf/lib/ld-linux-armhf.so.3 /lib/ld-linux-armhf.so.3 || true
