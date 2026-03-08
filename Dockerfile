@@ -38,10 +38,10 @@ RUN apt-get update && apt-get install -y \
     perl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust toolchain and ARMv7 target in single layer to prevent caching issues
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && \
-    rustup target add armv7-unknown-linux-gnueabihf
+# Install Rust toolchain and ARMv7 target
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup target add armv7-unknown-linux-gnueabihf
 
 # Set default version
 ARG PRISMA_VERSION=6.7.0
