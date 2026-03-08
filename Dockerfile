@@ -58,14 +58,25 @@ RUN echo "Skipping custom OpenSSL build - using system libraries"
 # ==============================================================================
 # Stage 3: Build Prisma Engines for ARMv7
 # ==============================================================================
-FROM builder AS prisma-builder
+FROM ubuntu:22.04 AS prisma-builder
 
-# Ensure PATH includes cargo and install ARM target with explicit toolchain
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies including cross-compiler
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc-arm-linux-gnueabihf \
+    g++-arm-linux-gnueabihf \
+    curl \
+    git \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust with ARM target
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-ENV CARGO_HOME=/root/.cargo
-ENV RUSTUP_HOME=/root/.rustup
-RUN rustup target add armv7-unknown-linux-gnueabihf --toolchain stable && \
-    rustup show
+RUN rustup target add armv7-unknown-linux-gnueabihf
 
 WORKDIR /tmp/prisma-engines
 
