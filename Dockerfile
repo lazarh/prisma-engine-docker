@@ -63,6 +63,10 @@ FROM ubuntu:22.04 AS prisma-builder
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Define PRISMA_VERSION
+ARG PRISMA_VERSION=6.7.0
+ENV PRISMA_VERSION=${PRISMA_VERSION}
+
 # Install dependencies including cross-compiler
 RUN apt-get update && apt-get install -y \
     build-essential \
