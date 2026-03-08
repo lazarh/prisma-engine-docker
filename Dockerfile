@@ -60,6 +60,10 @@ RUN echo "Skipping custom OpenSSL build - using system libraries"
 # ==============================================================================
 FROM builder AS prisma-builder
 
+# Ensure PATH includes cargo and install ARM target
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup target add armv7-unknown-linux-gnueabihf
+
 WORKDIR /tmp/prisma-engines
 
 # Clone prisma-engines at specified version
